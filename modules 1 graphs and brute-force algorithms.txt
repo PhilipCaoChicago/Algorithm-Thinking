@@ -1,0 +1,107 @@
+0 what is algorithmic thinking?
+where the algorithms comes from? 
+
+1) problem from domain expert, and get it computated
+for example, economist might think of friendship transitivity
+solution: understand the problem
+
+2) data available
+social network from twitter
+solution: formulate 
+
+3) quantify algorithm
+we have to quantify 
+input : i1..i5, there are links between them
+output: quantity & that corresonds tho transitivity.
+
+4) implementation using code
+
+
+1 pseudo - code
+Pseudo code is an language powerful in describing problem, it is between English and programming language. 
+
+Syntax of pseudo-code is not perfect, but it should reflect usually programming.
+
+
+2 small-world problem
+
+3 graphs and representation
+graphs G is a set of nodes V and a set of edges E
+adjacency matrix A A[i,j] = 1, if i and j are connected, o.w = 0
+
+4 paths and distances
+node degree, 
+     indegree, outdegree
+distance between two node
+
+5 brute force
+1) basic idea: check every possible path, find the shortest path and calculate the distance
+2) is the algorithm complete?
+is this algorithm eventually terminate?
+advantages of brute force algorithm is it is almost sure it is right
+
+
+6 effiency of the algorithm
+1)how much time the program needs
+2)how mnay memory the program needs
+We usually present running time of effiency as a function of input size.
+So what is the size of input?
+measuring of program length
+
+6.1 example efficiency of brute force distance
+input size : n nodes, m edges
+-----------------------------------
+graph is represented as an adjaceny matrix
+---------------------------------------------
+
+1 k <-1;
+2 while k < |V|:
+
+iterates n-1 times
+
+3   Uo <- i;
+4   Uk <- j;
+5   foreach subset V' belongs V of size k-1:
+
+using math reference 1, it should iterate (n,k-1) = n!/[(k-1)!(n-k+1)!]
+
+6       foreach permutation U1,... Uk-1 of the elements  of V':
+
+using math reference 2, it should iterate (k-1)! times
+
+7           IsPath <- Ture;
+8           for l <- 0 to k-1:
+
+iterates k times
+
+9               if {u1, u(l+1)} does not belong to E, then
+10                    IsPath <- False;
+11          if IsPath = True then
+12               return k;
+13  K <- k+1
+14  return infinite     
+
+in total there are 14 operations for single iteration,
+
+
+
+first math reference
+the number of subsets of size k of a set of size n
+is (n,k) = n!/[(n-k)!k!]
+
+second math reference
+the number of permutations of a list of n elements is n!
+
+line 1 and 2 contributes 2
+line 3,4,13 contributes 1 times for each iteration of (n-1) times of iterations line 2
+line 7 to line 12, as we consider the worst case, we always return False, therefore 2 + 2k times for each itertaion
+
+so the final results is: 
+2 + 3 * (n-1) +  sum(k=1, n-1) [(n,k) * (k-1)! * (2 + 2 * k)] 
+
+
+it is tidious 
+n = 2, 13
+n = 5, 500
+n = 10, 13 million
+

@@ -1,0 +1,95 @@
+http://www.codeskulptor.org/#user43_jZu2S7nIt7q44Wx.py
+
+"""
+BFS_Visted and CC_Visted Algorithm
+"""
+
+
+GRAPH6 = {1: set([2, 5]),
+          2: set([1, 7]),
+          3: set([4, 6, 9]),
+          4: set([3, 6, 9]),
+          5: set([1, 7]),
+          6: set([3, 4, 9]),
+          7: set([2, 5]),
+          9: set([3, 4, 6])}
+
+import poc_queue as q
+import random
+
+
+def copy_graph(graph):
+    """
+    Make a copy of a graph
+    """
+    new_graph = {}
+    for node in graph:
+        new_graph[node] = set(graph[node])
+    return new_graph
+
+def delete_node(ugraph, node):
+    """
+    Delete a node from an undirected graph
+    """
+    neighbors = ugraph[node]
+    ugraph.pop(node)
+    for neighbor in neighbors:
+        ugraph[neighbor].remove(node)
+
+def bfs_visited(ugraph, start_node):   
+    """
+    BFS algorithm to visit all the nodes 
+    in undirectd graph from start node
+    """    
+    myqueue = q.Queue()
+    empty = q.Queue()
+    visited = set([start_node])
+    myqueue.enqueue(start_node)
+    while str(myqueue) != str(empty):
+        current_node = myqueue.dequeue()
+        neighbors = ugraph[current_node]
+        for neighbor in neighbors:
+            if visited.intersection(set([neighbor])) == set():
+                visited = visited.union(set([neighbor]))
+                myqueue.enqueue(neighbor)
+    return visited
+                
+def cc_visited(ugraph):
+    """
+    Connected components algorithm to visit all the nodes 
+    in undirectd graph
+    """    
+    remainingnodes = set(ugraph.keys())
+    connected = set([])
+    ans = list()
+    while remainingnodes != set([]):
+        current_node = random.choice(list(remainingnodes))
+        visitednodes = bfs_visited(ugraph, current_node)
+        connected = connected.union(visitednodes)
+        remainingnodes = remainingnodes.difference(visitednodes)    
+        ans.append(visitednodes)
+    return ans
+
+def largest_cc_size(ugraph):
+    """
+    Cross Correlation algorithm to visit all the nodes 
+    in undirectd graph
+    """    
+    components = cc_visited(ugraph)
+    maxium = 0
+    for component in components:
+          if len(component) > maxium:
+                maxium = len(component)
+    return maxium
+
+def compute_resilience(ugraph, attack_order):
+    """
+    Compute graph resilience of a undirectd graph
+    """        
+    ans = [largest_cc_size(ugraph)]
+    graph = copy_graph(ugraph)
+    for attack in attack_order:
+        delete_node(graph, attack)
+        size = largest_cc_size(graph)
+        ans.append(size)
+    return ans    

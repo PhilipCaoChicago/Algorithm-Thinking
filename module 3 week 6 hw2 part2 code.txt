@@ -1,0 +1,510 @@
+"""
+Cluster class for Module 3
+"""
+
+import math
+
+
+class Cluster:
+    """
+    Class for creating and merging clusters of counties
+    """
+    
+    def __init__(self, fips_codes, horiz_pos, vert_pos, population, risk):
+        """
+        Create a cluster based the models a set of counties' data
+        """
+        self._fips_codes = fips_codes
+        self._horiz_center = horiz_pos
+        self._vert_center = vert_pos
+        self._total_population = population
+        self._averaged_risk = risk
+        
+        
+    def __repr__(self):
+        """
+        String representation assuming the module is "alg_cluster".
+        """
+        rep = "alg_cluster.Cluster("
+        rep += str(self._fips_codes) + ", "
+        rep += str(self._horiz_center) + ", "
+        rep += str(self._vert_center) + ", "
+        rep += str(self._total_population) + ", "
+        rep += str(self._averaged_risk) + ")"
+        return rep
+
+
+    def fips_codes(self):
+        """
+        Get the cluster's set of FIPS codes
+        """
+        return self._fips_codes
+    
+    def horiz_center(self):
+        """
+        Get the averged horizontal center of cluster
+        """
+        return self._horiz_center
+    
+    def vert_center(self):
+        """
+        Get the averaged vertical center of the cluster
+        """
+        return self._vert_center
+    
+    def total_population(self):
+        """
+        Get the total population for the cluster
+        """
+        return self._total_population
+    
+    def averaged_risk(self):
+        """
+        Get the averaged risk for the cluster
+        """
+        return self._averaged_risk
+   
+        
+    def copy(self):
+        """
+        Return a copy of a cluster
+        """
+        copy_cluster = Cluster(set(self._fips_codes), self._horiz_center, self._vert_center,
+                               self._total_population, self._averaged_risk)
+        return copy_cluster
+
+
+    def distance(self, other_cluster):
+        """
+        Compute the Euclidean distance between two clusters
+        """
+        vert_dist = self._vert_center - other_cluster.vert_center()
+        horiz_dist = self._horiz_center - other_cluster.horiz_center()
+        return math.sqrt(vert_dist ** 2 + horiz_dist ** 2)
+        
+    def merge_clusters(self, other_cluster):
+        """
+        Merge one cluster into another
+        The merge uses the relatively populations of each
+        cluster in computing a new center and risk
+        
+        Note that this method mutates self
+        """
+        if len(other_cluster.fips_codes()) == 0:
+            return self
+        else:
+            self._fips_codes.update(set(other_cluster.fips_codes()))
+ 
+            # compute weights for averaging
+            self_weight = float(self._total_population)                        
+            other_weight = float(other_cluster.total_population())
+            self._total_population = self._total_population + other_cluster.total_population()
+            self_weight /= self._total_population
+            other_weight /= self._total_population
+                    
+            # update center and risk using weights
+            self._vert_center = self_weight * self._vert_center + other_weight * other_cluster.vert_center()
+            self._horiz_center = self_weight * self._horiz_center + other_weight * other_cluster.horiz_center()
+            self._averaged_risk = self_weight * self._averaged_risk + other_weight * other_cluster.averaged_risk()
+            return self
+
+    def cluster_error(self, data_table):
+        """
+        Input: data_table is the original table of cancer data used in creating the cluster.
+        
+        Output: The error as the sum of the square of the distance from each county
+        in the cluster to the cluster center (weighted by its population)
+        """
+        # Build hash table to accelerate error computation
+        fips_to_line = {}
+        for line_idx in range(len(data_table)):
+            line = data_table[line_idx]
+            fips_to_line[line[0]] = line_idx
+        
+        # compute error as weighted squared distance from counties to cluster center
+        total_error = 0
+        counties = self.fips_codes()
+        for county in counties:
+            line = data_table[fips_to_line[county]]
+            singleton_cluster = Cluster(set([line[0]]), line[1], line[2], line[3], line[4])
+            singleton_distance = self.distance(singleton_cluster)
+            total_error += (singleton_distance ** 2) * singleton_cluster.total_population()
+        return total_error
+            
+
+#####################################################
+# Code for closest pairs of clusters
+
+def pair_distance(cluster_list, idx1, idx2):
+    """
+    Helper function that computes Euclidean distance between two clusters in a list
+
+    Input: cluster_list is list of clusters, idx1 and idx2 are integer indices for two clusters
+    
+    Output: tuple (dist, idx1, idx2) where dist is distance between
+    cluster_list[idx1] and cluster_list[idx2]
+    """
+    return (cluster_list[idx1].distance(cluster_list[idx2]), min(idx1, idx2), max(idx1, idx2))
+
+def slow_closest_pair(cluster_list):
+    """
+    Compute the distance between the closest pair of clusters in a list (slow)
+
+    Input: cluster_list is the list of clusters
+    
+    Output: tuple of the form (dist, idx1, idx2) where the centers of the clusters
+    cluster_list[idx1] and cluster_list[idx2] have minimum distance dist.       
+    """
+    idx_1 = -1
+    idx_2 = -1
+    distance = tuple([float("inf"), idx_1, idx_2])
+    for dummy_1 in range(len(cluster_list)):
+        for dummy_2 in range(dummy_1 + 1,len(cluster_list)):
+            if pair_distance(cluster_list,dummy_1,dummy_2) < distance:
+                distance = pair_distance(cluster_list,dummy_1,dummy_2)           
+    return distance
+
+
+def fast_closest_pair(cluster_list):
+    """
+    Compute the distance between the closest pair of clusters in a list (fast)
+
+    Input: cluster_list is list of clusters SORTED such that horizontal positions of their
+    centers are in ascending order
+    
+    Output: tuple of the form (dist, idx1, idx2) where the centers of the clusters
+    cluster_list[idx1] and cluster_list[idx2] have minimum distance dist.       
+    """
+    length = len(cluster_list)
+    if length <= 3:
+        distance = slow_closest_pair(cluster_list)
+    else:
+        mid = int(round(length/2))
+        cluster1 = cluster_list[0:mid]
+        cluster2 = cluster_list[mid:length]
+        distance1 = fast_closest_pair(cluster1)
+        pdistance2 = fast_closest_pair(cluster2)
+        distance2 = tuple([list(pdistance2)[0], list(pdistance2)[1] + mid, list(pdistance2)[2] +mid])
+        distance = min(distance1, distance2)
+        dstrip = list(distance)[0]
+        middle = 0.5 * (cluster_list[mid-1].horiz_center() +cluster_list[mid].horiz_center())
+        distance = min(distance, closest_pair_strip(cluster_list, middle, dstrip))
+                       
+    return distance
+
+def closest_pair_strip(cluster_list, horiz_center, half_width):
+    """
+    Helper function to compute the closest pair of clusters in a vertical strip
+    
+    Input: cluster_list is a list of clusters produced by fast_closest_pair
+    horiz_center is the horizontal position of the strip's vertical center line
+    half_width is the half the width of the strip (i.e; the maximum horizontal distance
+    that a cluster can lie from the center line)
+
+    Output: tuple of the form (dist, idx1, idx2) where the centers of the clusters
+    cluster_list[idx1] and cluster_list[idx2] lie in the strip and have minimum distance dist.       
+    """
+    # get a set s
+    set1 = list()
+    for dummy_1 in range(len(cluster_list)):
+        if horiz_center - half_width <= cluster_list[dummy_1].horiz_center() <= horiz_center + half_width:
+            set1.append(dummy_1)        
+    # sort the S in nondecreasing order of the vertical (y) coordinates
+    set1.sort(key = lambda cluster: cluster_list[cluster].vert_center())
+    
+    klength = len(set1)
+    idx1 = -1
+    idx2 = -1
+    distance = tuple([float("inf"), idx1, idx2])
+    
+    for dummy_2 in range(klength-1):
+        for dummy_3 in range( dummy_2 + 1 ,  min(dummy_2 + 4, klength)) :
+            distance = min(distance, pair_distance(cluster_list, set1[dummy_2], set1[dummy_3]))
+    return distance
+######################################################################
+# Code for hierarchical clustering
+
+
+def hierarchical_clustering(cluster_list, num_clusters):
+    """
+    Compute a hierarchical clustering of a set of clusters
+    Note: the function may mutate cluster_list
+    
+    Input: List of clusters, integer number of clusters
+    Output: List of clusters whose length is num_clusters
+    """
+    new_cluster_list = cluster_list[:]
+    new_cluster_list.sort(key = lambda cluster: cluster.horiz_center())
+    while len(new_cluster_list) > num_clusters:
+        print(len(new_cluster_list))
+        distance = fast_closest_pair(new_cluster_list)
+        idx1 = list(distance)[1]
+        idx2 = list(distance)[2]
+        new_cluster_list[idx1].merge_clusters(new_cluster_list[idx2])
+        new_cluster_list.pop(idx2)
+    return new_cluster_list
+
+
+######################################################################
+# Code for k-means clustering
+
+    
+def center_cluster_distance(center, cluster):
+    """
+    Compute distance of center to the point
+    """
+    vert_dist = list(center)[1] - cluster.vert_center()
+    horiz_dist = list(center)[0] - cluster.horiz_center()  
+    return math.sqrt(vert_dist ** 2 + horiz_dist ** 2)
+
+def nearest_center(center_list, cluster):
+    """
+    Compute nearest center
+    """
+    # initial index and distance
+    idx1 = -1
+    distance = float("inf")
+    for dummy in range(len(center_list)):
+        if center_cluster_distance(center_list[dummy], cluster) < distance:
+            distance = center_cluster_distance(center_list[dummy], cluster)
+            idx1 = dummy
+    return idx1
+
+
+            
+def kmeans_clustering(cluster_list, num_clusters, num_iterations):
+    """
+    Compute the k-means clustering of a set of clusters
+    Note: the function may not mutate cluster_list
+    
+    Input: List of clusters, integers number of clusters and number of iterations
+    Output: List of clusters whose length is num_clusters
+    """
+
+    # position initial centers at the location of clusters with largest populations
+    new_cluster_list = cluster_list[:]
+    new_cluster_list.sort(key = lambda cluster: cluster.total_population())
+    center_list = list()
+    for dummy in range(num_clusters):
+        center_list.append(tuple([new_cluster_list[-dummy-1].horiz_center(),new_cluster_list[-dummy-1].vert_center()]))
+    
+    # start the q iteration of k-means method
+    for dummy_q in range(num_iterations):
+        #initial k empty clusters
+        clustering_results = list()
+        for dummy_k in range(num_clusters):
+            clustering_results.append(Cluster(set([]),0,0,0,0))
+        #add each of n points to the cluster with the cloest center
+        for cluster in new_cluster_list:
+            idx = nearest_center(center_list, cluster)
+            clustering_results[idx].merge_clusters(cluster)
+        #compute k new centers 
+        for dummy_k in range(num_clusters):
+            center_list[dummy_k] = tuple(list([clustering_results[dummy_k].horiz_center(),clustering_results[dummy_k].vert_center()]))
+    return clustering_results
+
+
+"""
+Some provided code for plotting the clusters using matplotlib
+"""
+
+import math
+import urllib.request as urllib2
+import matplotlib.pyplot as plt
+
+
+# URLS for various important datasets
+DIRECTORY = "http://commondatastorage.googleapis.com/codeskulptor-assets/"
+MAP_URL = DIRECTORY + "data_clustering/USA_Counties.png"
+
+# Define colors for clusters.  Display a max of 16 clusters.
+COLORS = ['Aqua', 'Yellow', 'Blue', 'Fuchsia', 'Black', 'Green', 'Lime', 'Maroon', 'Navy', 'Olive', 'Orange', 'Purple', 'Red', 'Brown', 'Teal']
+
+
+
+# Helper functions
+
+def circle_area(pop):
+    """
+    Compute area of circle proportional to population
+    """
+    return math.pi * pop / (200.0 ** 2)
+
+
+def plot_clusters(data_table, cluster_list, draw_centers = False):
+    """
+    Create a plot of clusters of counties
+    """
+
+    fips_to_line = {}
+    for line_idx in range(len(data_table)):
+        fips_to_line[data_table[line_idx][0]] = line_idx
+     
+    # Load map image
+    map_file = urllib2.urlopen(MAP_URL)
+    map_img = plt.imread(map_file)
+
+    # Scale plot to get size similar to CodeSkulptor version
+    ypixels, xpixels, bands = map_img.shape
+    DPI = 60.0                  # adjust this constant to resize your plot
+    xinch = xpixels / DPI
+    yinch = ypixels / DPI
+    plt.figure(figsize=(xinch,yinch))
+    implot = plt.imshow(map_img)
+   
+    # draw the counties colored by cluster on the map
+    if not draw_centers:
+        for cluster_idx in range(len(cluster_list)):
+            cluster = cluster_list[cluster_idx]
+            cluster_color = COLORS[cluster_idx % len(COLORS)]
+            for fips_code in cluster.fips_codes():
+                line = data_table[fips_to_line[fips_code]]
+                plt.scatter(x = [line[1]], y = [line[2]], s =  circle_area(line[3]), lw = 1,
+                            facecolors = cluster_color, edgecolors = cluster_color)
+
+    # add cluster centers and lines from center to counties            
+    else:
+        for cluster_idx in range(len(cluster_list)):
+            cluster = cluster_list[cluster_idx]
+            cluster_color = COLORS[cluster_idx % len(COLORS)]
+            for fips_code in cluster.fips_codes():
+                line = data_table[fips_to_line[fips_code]]
+                plt.scatter(x = [line[1]], y = [line[2]], s =  circle_area(line[3]), lw = 1,
+                            facecolors = cluster_color, edgecolors = cluster_color, zorder = 1)
+        for cluster_idx in range(len(cluster_list)):
+            cluster = cluster_list[cluster_idx]
+            cluster_color = COLORS[cluster_idx % len(COLORS)]
+            cluster_center = (cluster.horiz_center(), cluster.vert_center())
+            for fips_code in cluster.fips_codes():
+                line = data_table[fips_to_line[fips_code]]
+                plt.plot( [cluster_center[0], line[1]],[cluster_center[1], line[2]], cluster_color, lw=1, zorder = 2)
+        for cluster_idx in range(len(cluster_list)):
+            cluster = cluster_list[cluster_idx]
+            cluster_color = COLORS[cluster_idx % len(COLORS)]
+            cluster_center = (cluster.horiz_center(), cluster.vert_center())
+            cluster_pop = cluster.total_population()
+            plt.scatter(x = [cluster_center[0]], y = [cluster_center[1]], s =  circle_area(cluster_pop), lw = 2,
+                        facecolors = "none", edgecolors = "black", zorder = 3)
+
+
+    plt.show()
+
+"""
+Example code for creating and visualizing
+cluster of county-based cancer risk data
+
+Note that you must download the file
+http://www.codeskulptor.org/#alg_clusters_matplotlib.py
+to use the matplotlib version of this code
+"""
+
+# Flavor of Python - desktop or CodeSkulptor
+#DESKTOP = True
+
+import math
+import random
+import urllib.request as urllib2
+
+
+# conditional imports
+#if DESKTOP:
+#   import alg_project3_solution      # desktop
+#   import alg_clusters_matplotlib
+#else:
+#    #import userXX_XXXXXXXX as alg_project3_solution   # CodeSkulptor project solution
+#    import alg_clusters_simplegui
+#    import codeskulptor
+#    codeskulptor.set_timeout(30)
+
+
+###################################################
+# Code to load data tables
+
+# URLs for cancer risk data tables of various sizes
+# Numbers indicate number of counties in data table
+
+DIRECTORY = "http://commondatastorage.googleapis.com/codeskulptor-assets/"
+DATA_3108_URL = DIRECTORY + "data_clustering/unifiedCancerData_3108.csv"
+DATA_896_URL = DIRECTORY + "data_clustering/unifiedCancerData_896.csv"
+DATA_290_URL = DIRECTORY + "data_clustering/unifiedCancerData_290.csv"
+DATA_111_URL = DIRECTORY + "data_clustering/unifiedCancerData_111.csv"
+
+
+def load_data_table(data_url):
+    """
+    Import a table of county-based cancer risk data
+    from a csv format file
+    """
+    data_file = urllib2.urlopen(data_url)
+    data = data_file.read()
+    # print(type(data)) python 3 distinguish byte type with string type
+    # convert byte type to string type in python 3
+    data = str(data, 'utf-8')
+    data_lines = data.split("\r")
+    print("Loaded", len(data_lines), "data points")
+    data_tokens = [line.split(',') for line in data_lines]
+    return [[tokens[0], float(tokens[1]), float(tokens[2]), int(tokens[3]), float(tokens[4])] 
+            for tokens in data_tokens]
+
+
+############################################################
+# Code to create sequential clustering
+# Create alphabetical clusters for county data
+
+def sequential_clustering(singleton_list, num_clusters):
+    """
+    Take a data table and create a list of clusters
+    by partitioning the table into clusters based on its ordering
+    
+    Note that method may return num_clusters or num_clusters + 1 final clusters
+    """
+    
+    cluster_list = []
+    cluster_idx = 0
+    total_clusters = len(singleton_list)
+    cluster_size = float(total_clusters)  / num_clusters
+    
+    for cluster_idx in range(len(singleton_list)):
+        new_cluster = singleton_list[cluster_idx]
+        if math.floor(cluster_idx / cluster_size) != \
+           math.floor((cluster_idx - 1) / cluster_size):
+            cluster_list.append(new_cluster)
+        else:
+            cluster_list[-1] = cluster_list[-1].merge_clusters(new_cluster)
+            
+    return cluster_list
+                
+
+
+
+def run_example():
+    """
+    Load a data table, compute a list of clusters and 
+    plot a list of clusters
+
+    Set DESKTOP = True/False to use either matplotlib or simplegui
+    """
+    data_table = load_data_table(DATA_3108_URL)
+    
+    singleton_list = []
+    for line in data_table:
+        singleton_list.append(Cluster(set([line[0]]), line[1], line[2], line[3], line[4]))
+        
+    cluster_list = sequential_clustering(singleton_list, 15)	
+    print("Displaying", len(cluster_list), "sequential clusters")
+
+    #cluster_list = alg_project3_solution.hierarchical_clustering(singleton_list, 9)
+    #print "Displaying", len(cluster_list), "hierarchical clusters"
+
+    #cluster_list = alg_project3_solution.kmeans_clustering(singleton_list, 9, 5)	
+    #print "Displaying", len(cluster_list), "k-means clusters"
+
+            
+    # draw the clusters using matplotlib or simplegui
+#    if DESKTOP:
+    plot_clusters(data_table, cluster_list, True)
+    #alg_clusters_matplotlib.plot_clusters(data_table, cluster_list, True)  #add cluster centers
+#    else:
+#        alg_clusters_simplegui.PlotClusters(data_table, cluster_list)   # use toggle in GUI to add cluster centers
+    
+run_example()

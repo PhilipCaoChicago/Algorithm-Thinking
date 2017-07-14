@@ -1,0 +1,164 @@
+"""
+Code for scoring matrix
+"""
+
+
+# generate scoring matrix
+def build_scoring_matrix(alphabet, diag_score, off_diag_score, dash_score):
+    """
+    bulid a scoring matrix
+    """
+    lalphabet = list(alphabet)
+    ans_dict = dict()
+    # for every string and "-" in alphabet
+    for dummy in range(len(lalphabet) + 1):
+        if dummy == len(lalphabet):
+            str1 = "-"
+        else:
+            str1 = lalphabet[dummy]
+        # generate a dictionary for each str1
+        subdict_dummy = dict()
+        # for every string and "-" in alphabet
+        for dummy2 in range(len(lalphabet) + 1):
+            if dummy2 == len(lalphabet):
+                str2 = "-"
+            else:
+                str2 = lalphabet[dummy2]
+            # set value for sub dictionary
+            if str1 == "-" or str2 == "-":
+                subdict_dummy[str2] = dash_score
+            elif str1 == str2:
+                subdict_dummy[str2] = diag_score
+            else:
+                subdict_dummy[str2] = off_diag_score
+        ans_dict[str1] = subdict_dummy
+    return ans_dict
+
+# compute alignment matrix     
+def compute_alignment_matrix(seq_x, seq_y, scoring_matrix, global_flag):
+    """
+    bulid a global alignment matrix 
+    for the maximum score over every possible global alignment
+    using recursive method
+    """            
+    if global_flag == True:
+        len_m = len(seq_x) 
+        len_n = len(seq_y) 
+        # creat a empty grid
+        score_grid = [[0 for dummy_col in range(len_n + 1)]
+                         for dummy_row in range(len_m + 1)] 
+        for dummy_row in range(1, len_m + 1):
+            score_grid[dummy_row][0] = score_grid[dummy_row - 1][0] + scoring_matrix[seq_x[dummy_row - 1]]["-"]
+        for dummy_col in range(1, len_n + 1):
+            score_grid[0][dummy_col]= score_grid[0][dummy_col - 1] + scoring_matrix["-"][seq_y[dummy_col - 1]]
+        for dummy_row in range(1, len_m + 1):
+            for dummy_col in range(1, len_n + 1):
+                score_grid[dummy_row][dummy_col] = max(score_grid[dummy_row - 1][dummy_col - 1] + scoring_matrix[seq_x[dummy_row - 1]][seq_y[dummy_col - 1]],
+                                                       score_grid[dummy_row - 1][dummy_col] + scoring_matrix[seq_x[dummy_row - 1]]["-"],
+                                                       score_grid[dummy_row][dummy_col - 1] + scoring_matrix["-"][seq_y[dummy_col - 1]])
+    else:
+        len_m = len(seq_x) 
+        len_n = len(seq_y) 
+        # creat a empty grid
+        score_grid = [[0 for dummy_col in range(len_n + 1)]
+                         for dummy_row in range(len_m + 1)] 
+        for dummy_row in range(1, len_m + 1):
+            score_grid[dummy_row][0] = max(score_grid[dummy_row - 1][0] + scoring_matrix[seq_x[dummy_row - 1]]["-"],0)
+        for dummy_col in range(1, len_n + 1):
+            score_grid[0][dummy_col]= max(score_grid[0][dummy_col - 1] + scoring_matrix["-"][seq_y[dummy_col - 1]],0)
+        for dummy_row in range(1, len_m + 1):
+            for dummy_col in range(1, len_n + 1):
+                score_grid[dummy_row][dummy_col] = max(score_grid[dummy_row - 1][dummy_col - 1] + scoring_matrix[seq_x[dummy_row - 1]][seq_y[dummy_col - 1]],
+                                                       score_grid[dummy_row - 1][dummy_col] + scoring_matrix[seq_x[dummy_row - 1]]["-"],
+                                                       score_grid[dummy_row][dummy_col - 1] + scoring_matrix["-"][seq_y[dummy_col - 1]],
+                                                       0)       
+    return score_grid
+        
+def compute_global_alignment(seq_x, seq_y, scoring_matrix, alignment_matrix):
+    """
+    Algorithm for a global alignment matrix 
+    """                
+    dummy_i = len(seq_x)
+    dummy_j = len(seq_y)
+    score = alignment_matrix[dummy_i][dummy_j]
+    ans_x = ""
+    ans_y = ""
+    while dummy_i != 0 and dummy_j != 0:
+        if alignment_matrix[dummy_i][dummy_j] == alignment_matrix[dummy_i - 1][dummy_j - 1] + scoring_matrix[seq_x[dummy_i - 1]][seq_y[dummy_j - 1]]:
+            ans_x = seq_x[dummy_i - 1] + ans_x
+            ans_y = seq_y[dummy_j - 1] + ans_y
+            dummy_i -= 1
+            dummy_j -= 1
+        else:
+            if alignment_matrix[dummy_i][dummy_j] == alignment_matrix[dummy_i - 1][dummy_j] + scoring_matrix[seq_x[dummy_i - 1]]["-"]:
+                ans_x = seq_x[dummy_i - 1] + ans_x
+                ans_y = '-' + ans_y
+                dummy_i -= 1
+            else:
+                ans_x = '-' + ans_x
+                ans_y = seq_y[dummy_j - 1] + ans_y
+                dummy_j -= 1
+    while dummy_i != 0:
+        ans_x = seq_x[dummy_i - 1] + ans_x
+        ans_y = '-' + ans_y
+        dummy_i -= 1
+    while dummy_j != 0:
+        ans_x = '-' + ans_x
+        ans_y = seq_y[dummy_j - 1] + ans_y
+        dummy_j -= 1
+    return tuple([score,ans_x, ans_y])  
+
+def compute_local_alignment(seq_x, seq_y, scoring_matrix, alignment_matrix):
+    """
+    Algorithm for a local alignment matrix 
+    """              
+    dummy1 = len(seq_x) 
+    dummy2 = len(seq_y) 
+    ans_x = ""
+    ans_y = ""
+    
+    # get maxium score and position   
+    score = alignment_matrix[dummy1][dummy2]
+    dummy_i = dummy1
+    dummy_j = dummy2
+    for dummy_a in range(dummy1 + 1):
+        for dummy_b in range(dummy2 + 1):
+            tscore = alignment_matrix[dummy_a][dummy_b]
+            if tscore > score:
+                score = tscore
+                dummy_i = dummy_a
+                dummy_j = dummy_b
+                
+               
+    while dummy_i != 0 and dummy_j != 0:
+        if alignment_matrix[dummy_i][dummy_j] == 0:
+            return tuple([score,ans_x, ans_y]) 
+        elif alignment_matrix[dummy_i][dummy_j] == alignment_matrix[dummy_i - 1][dummy_j - 1] + scoring_matrix[seq_x[dummy_i - 1]][seq_y[dummy_j - 1]]:
+            ans_x = seq_x[dummy_i - 1] + ans_x
+            ans_y = seq_y[dummy_j - 1] + ans_y
+            dummy_i -= 1
+            dummy_j -= 1
+        else:
+            if alignment_matrix[dummy_i][dummy_j] == alignment_matrix[dummy_i - 1][dummy_j] + scoring_matrix[seq_x[dummy_i - 1]]["-"]:
+                ans_x = seq_x[dummy_i - 1] + ans_x
+                ans_y = '-' + ans_y
+                dummy_i -= 1
+            else:
+                ans_x = '-' + ans_x
+                ans_y = seq_y[dummy_j - 1] + ans_y
+                dummy_j -= 1
+    while dummy_i != 0:
+        if alignment_matrix[dummy_i][dummy_j] == 0:
+            return tuple([score,ans_x, ans_y])            
+        else:
+            ans_x = seq_x[dummy_i - 1] + ans_x
+            ans_y = '-' + ans_y
+            dummy_i -= 1
+    while dummy_j != 0:
+        if alignment_matrix[dummy_i][dummy_j] == 0:
+            return tuple([score,ans_x, ans_y]) 
+        else:
+            ans_x = '-' + ans_x
+            ans_y = seq_y[dummy_j - 1] + ans_y
+            dummy_j -= 1
+    return tuple([score,ans_x, ans_y])  

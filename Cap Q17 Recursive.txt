@@ -1,0 +1,65 @@
+#Capstone Q17
+
+def pick_a_number(board):
+    if len(board) == 1:
+        choose1 = board[0]
+        choose2 = 0
+        return tuple([choose1,choose2])
+    elif len(board) == 2:
+        choose1 = max(board[0],board[1])
+        choose2 = min(board[0],board[1])
+        return tuple([choose1, choose2])
+    else:
+        #case1
+        choose1_1 = board[0]
+        choose1_2 = board[1]
+        board1 = board[2:]
+        lpan_b1 = list(pick_a_number(board1))
+        #case2
+        choose2_1 = board[-1]
+        choose2_2 = board[-2]
+        board2 = board[:-2]
+        lpan_b2 = list(pick_a_number(board2))
+        #case3
+        choose3_1 = board[0]
+        choose3_2 = board[-1]
+        board3 = board[1:-1]
+        lpan_b3 = list(pick_a_number(board3))
+        #case4
+        choose4_1 = board[-1]
+        choose4_2 = board[0]
+        board4 = board[1:-1]
+        lpan_b4 = list(pick_a_number(board1))
+        
+        #decided what player 2 would choose under two different subgame of player1   
+        if choose1_2 + lpan_b1[1] >= choose3_2 + lpan_b3[1]:
+            subboard1 = board1
+            lpan_sb1 = lpan_b1
+        else:
+            subboard1 = board3
+            lpan_sb1 = lpan_b3
+        if choose2_2 + lpan_b2[1] >= choose4_2 + lpan_b4[1]:
+            subboard2 = board2
+            lpan_sb2 = lpan_b2
+        else:
+            subboard2 = board4
+            lpan_sb2 = lpan_b4
+        
+        #choose the maxium for player 1
+        choose = max(board[0] + lpan_sb1[0], board[1] + list(lpan_sb2)[0])
+        if choose == board[0] + lpan_sb1[0]: 
+            choose1 = board[0]
+            if subboard1 == board1:
+                choose2 = board[1]
+                return tuple([choose1 + lpan_sb1[0],choose2 + lpan_sb1[1]])
+            else:
+                choose2 = board[-1]
+                return tuple([choose1 + lpan_sb1[0],choose2 + lpan_sb1[1]])
+        else:
+            choose1 = board[-1]
+            if subboard2 == board2:
+                choose2 = board[-2]                        
+                return tuple([choose1 + lpan_sb2[0],choose2 + lpan_sb2[1]])
+            else:
+                choose2 = board[-1]                        
+                return tuple([choose1 + lpan_sb2[0],choose2 + lpan_sb2[1]])

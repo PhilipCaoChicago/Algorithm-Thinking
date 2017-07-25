@@ -1,0 +1,40 @@
+import itertools
+
+def get_edge(ugraph):
+    node_list = list(ugraph.keys())
+    edge_list = list()
+    for dummy in range(len(node_list)):
+        node = node_list[dummy] 
+        edges = list(ugraph[node])
+        for dummy2 in range(len(edges)):
+            edge = edges[dummy2]
+            if edge > node:
+                edge_list.append(tuple([node,edge]))
+    return edge_list
+
+def edge_node_inter(edge,node_list):
+    #edge is a tuple, node is a list of point
+    edge_nodes = list(edge)
+    edge_node1 = edge_nodes[0]
+    edge_node2 = edge_nodes[1]
+    value1 = edge_node1 in node_list
+    value2 = edge_node2 in node_list
+    return (value1 or value2)
+    
+
+def mystery(ugraph):
+    node_list = ugraph.keys()
+    edge_list = get_edge(ugraph)
+    #check different size of subnodes
+    for dummy_i in range(len(ugraph)):
+        sub_dummy_i = list(itertools.combinations(node_list, dummy_i))
+        #check different subnodes
+        for dummy in range(len(sub_dummy_i)):
+            flag = True
+            sub_node_list = list(sub_dummy_i[dummy])
+            for edge in edge_list:
+                if edge_node_inter(edge,sub_node_list) == False:
+                    flag = False
+            if flag == True:
+                return sub_node_list
+            
